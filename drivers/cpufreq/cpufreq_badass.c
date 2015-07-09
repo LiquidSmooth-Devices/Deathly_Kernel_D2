@@ -187,16 +187,6 @@ static inline cputime64_t get_cpu_idle_time_jiffy(unsigned int cpu,
 	return (cputime64_t)jiffies_to_usecs(idle_time);
 }
 
-static inline cputime64_t get_cpu_idle_time(unsigned int cpu, cputime64_t *wall)
-{
-	u64 idle_time = get_cpu_idle_time_us(cpu, wall);
-
-	if (idle_time == -1ULL)
-		return get_cpu_idle_time_jiffy(cpu, wall);
-
-	return idle_time;
-}
-
 static inline cputime64_t get_cpu_iowait_time(unsigned int cpu, cputime64_t *wall)
 {
 	u64 iowait_time = get_cpu_iowait_time_us(cpu, wall);
@@ -472,7 +462,7 @@ static ssize_t store_ignore_nice_load(struct kobject *a, struct attribute *b,
 		struct cpu_bds_info_s *bds_info;
 		bds_info = &per_cpu(od_cpu_bds_info, j);
 		bds_info->prev_cpu_idle = get_cpu_idle_time(j,
-						&bds_info->prev_cpu_wall);
+						&bds_info->prev_cpu_wall, 0);
 		if (bds_tuners_ins.ignore_nice)
 			bds_info->prev_cpu_nice = kcpustat_cpu(j).cpustat[CPUTIME_NICE];
 
@@ -764,7 +754,7 @@ static void bds_check_cpu(struct cpu_bds_info_s *this_bds_info)
 
 		j_bds_info = &per_cpu(od_cpu_bds_info, j);
 
-		cur_idle_time = get_cpu_idle_time(j, &cur_wall_time);
+		cur_idle_time = get_cpu_idle_time(j, &cur_wall_time, 0);
 		cur_iowait_time = get_cpu_iowait_time(j, &cur_wall_time);
 
 		wall_time = (unsigned int) (cur_wall_time - j_bds_info->prev_cpu_wall);
@@ -1038,7 +1028,7 @@ static void bds_refresh_callback(struct work_struct *unused)
 		__cpufreq_driver_target(policy, policy->max,
 					CPUFREQ_RELATION_L);
 		this_bds_info->prev_cpu_idle = get_cpu_idle_time(cpu,
-				&this_bds_info->prev_cpu_wall);
+				&this_bds_info->prev_cpu_wall, 0);
 	}
 	unlock_policy_rwsem_write(cpu);
 }
@@ -1137,7 +1127,7 @@ static int cpufreq_governor_bds(struct cpufreq_policy *policy,
 			j_bds_info->cur_policy = policy;
 
 			j_bds_info->prev_cpu_idle = get_cpu_idle_time(j,
-						&j_bds_info->prev_cpu_wall);
+						&j_bds_info->prev_cpu_wall, 0);
 			if (bds_tuners_ins.ignore_nice) {
 				j_bds_info->prev_cpu_nice =
 						kcpustat_cpu(j).cpustat[CPUTIME_NICE];
